@@ -1,17 +1,28 @@
 from django.contrib.auth import get_user_model
 from django.http import Http404, HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework import generics, mixins, permissions, status
+from rest_framework import generics, mixins, permissions, status, renderers
 from rest_framework.decorators import api_view
 from rest_framework.parsers import JSONParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.reverse import reverse
 
 from snippets.models import Snippet
 from snippets.permissions import IsOwnerOrReadOnly
 from snippets.serializers import SnippetSerializer, UserSerializer
 
 User = get_user_model()
+
+
+@api_view(["GET"])
+def api_root(request, format=None):
+    return Response(
+        {
+            "users": reverse("user-list", request=request, format=format),
+            "snippets": reverse("snippet-list", request=request, format=format),
+        }
+    )
 
 
 @csrf_exempt
@@ -207,3 +218,12 @@ class UserList(generics.ListAPIView):
 class UserDetail(generics.RetrieveAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+
+
+class SnippetHighlight(generics.GenericAPIView):
+    queryset = Snippet.objects.all()
+    renderer_classes = [renderers.StaticHTMLRenderer]
+
+    def get(self, request, *args, **kwargs):
+        snippet = self.get_object()
+        return Response(snippet.highlighted)
